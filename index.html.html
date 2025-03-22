@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Campo de Girasoles Realistas Animados</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #eee;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    // Configuración inicial del canvas
+    const canvas = document.getElementById('canvas');
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+
+    /* ============================ */
+    /* Funciones de Dibujo          */
+    /* ============================ */
+
+    // Fondo con degradado original:  
+    // 0: "skyblue", 0.4: "lightblue", 0.5: "lightgreen", 1: "green"
+    function drawBackground() {
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, "skyblue");
+      gradient.addColorStop(0.4, "lightblue");
+      gradient.addColorStop(0.5, "lightgreen");
+      gradient.addColorStop(1, "green");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Dibuja un pétalo usando curvas Bézier con degradado vertical.
+    function drawPetal(petalLength, petalWidth) {
+      ctx.save();
+      const grad = ctx.createLinearGradient(0, 0, 0, petalLength);
+      grad.addColorStop(0, "#FFFACD");  // amarillo pálido
+      grad.addColorStop(1, "#FFA500");  // naranja intenso
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(
+        petalWidth, petalLength / 3,
+        petalWidth, 2 * petalLength / 3,
+        0, petalLength
+      );
+      ctx.bezierCurveTo(
+        -petalWidth, 2 * petalLength / 3,
+        -petalWidth, petalLength / 3,
+        0, 0
+      );
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Dibuja el centro del girasol con degradado radial y textura (pequeños puntos).
+    function drawCenter(radius) {
+      ctx.save();
+      const grad = ctx.createRadialGradient(0, 0, radius * 0.1, 0, 0, radius);
+      grad.addColorStop(0, "#8B4513"); // marrón intenso
+      grad.addColorStop(1, "#4B2E0B"); // marrón oscuro
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.fill();
+      // Creación de textura: pequeños puntos que simulan semillas
+      for (let i = 0; i < 300; i++) {
+        const angle = Math.random() * 2 * Math.PI;
+        const r = Math.random() * radius;
+        const dx = r * Math.cos(angle);
+        const dy = r * Math.sin(angle);
+        ctx.fillStyle = "rgba(0,0,0,0.1)";
+        ctx.beginPath();
+        ctx.arc(dx, dy, 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // Dibuja el tallo del girasol (línea vertical) con una longitud realista.
+    function drawStem(x, y, scale) {
+      ctx.save();
+      ctx.strokeStyle = "#228B22";  // verde bosque
+      ctx.lineWidth = 14 * scale;
+      ctx.beginPath();
+      // El tallo se extiende 120 píxeles por unidad de escala.
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y + 120 * scale);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Dibuja una hoja con curvas cuadráticas.
+    // (x, y) es el punto de inicio; 'rotation' define la inclinación.
+    function drawLeaf(x, y, scale, rotation) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(scale * 60, -scale * 20, scale * 20, scale * 60);
+      ctx.quadraticCurveTo(0, scale * 40, 0, 0);
+      ctx.fillStyle = "#228B22";
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Dibuja la cabeza (la flor) del girasol.
+    // (x, y) indica la posición donde se dibuja la cabeza; 'swayAngle' se usa para la oscilación.
+    function drawFlowerHead(x, y, scale, swayAngle) {
+      const petalCount  = 24;
+      const petalLength = 100 * scale;  // Petalos un poco más cortos
+      const petalWidth  = 20 * scale;
+      const centerRadius = 40 * scale;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(swayAngle);
+      for (let i = 0; i < petalCount; i++) {
+        const angle = i * (2 * Math.PI / petalCount);
+        ctx.save();
+        ctx.rotate(angle);
+        drawPetal(petalLength, petalWidth);
+        ctx.restore();
+      }
+      drawCenter(centerRadius);
+      ctx.restore();
+    }
+
+    // Dibuja el girasol completo: tallo, hojas y la cabeza (con oscilación y desplazamiento horizontal).
+    // (x, y) es la base del tallo.
+    function drawSunflower(x, y, scale, swayAngle, headOffsetX) {
+      // Dibujar el tallo (y hojas) de forma fija.
+      drawStem(x, y, scale);
+      drawLeaf(x, y + 40 * scale, scale, -Math.PI / 4);
+      drawLeaf(x, y + 70 * scale, scale, Math.PI / 4);
+      // La cabeza se dibuja en la parte superior, aplicando un pequeño offset horizontal.
+      drawFlowerHead(x + headOffsetX, y - 120 * scale, scale, swayAngle);
+    }
+
+    // Dibuja una nube (estilo cartoon).
+    function drawCloud(x, y, scale) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(scale, scale);
+      ctx.fillStyle = "white";
+      ctx.beginPath();
+      ctx.arc(0, 0, 20, 0, 2 * Math.PI);
+      ctx.arc(25, -10, 20, 0, 2 * Math.PI);
+      ctx.arc(50, 0, 20, 0, 2 * Math.PI);
+      ctx.arc(25, 10, 20, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Dibuja una abeja con alas que baten.
+    function drawBee(x, y, wingAngle) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = "yellow";
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 1;
+      // Cuerpo (forma oval)
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 10, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Raya central en el cuerpo
+      ctx.beginPath();
+      ctx.moveTo(-5, 0);
+      ctx.lineTo(5, 0);
+      ctx.stroke();
+      // Cabeza (círculo)
+      ctx.beginPath();
+      ctx.arc(-12, 0, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Alas con oscilación para simular batir
+      ctx.fillStyle = "rgba(200,200,255,0.6)";
+      ctx.save();
+      ctx.translate(-3, -6);
+      ctx.rotate(wingAngle);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 3, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.save();
+      ctx.translate(3, -6);
+      ctx.rotate(-wingAngle);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 3, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.restore();
+    }
+
+    /* ============================ */
+    /* Inicialización de Elementos  */
+    /* ============================ */
+
+    let sunflowers = [];
+    function initSunflowers() {
+      const count = 12;
+      sunflowers = [];
+      for (let i = 0; i < count; i++) {
+        // Distribución: base del tallo entre el 80% y 95% de la altura
+        const x = Math.random() * canvas.width;
+        const y = canvas.height * 0.80 + Math.random() * (canvas.height * 0.15);
+        // Escala realista: los girasoles más cercanos son más grandes
+        const scale = 0.7 + Math.random() * 0.5;
+        // Parámetros individuales de oscilación:
+        const phase = Math.random() * 2 * Math.PI;
+        const speed = 0.002 + Math.random() * 0.002; // velocidad base de oscilación
+        const amplitude = 0.03;  // amplitud en radianes
+        sunflowers.push({ x, y, scale, phase, speed, amplitude });
+      }
+      // Dibujar primero los más lejanos (más pequeños)
+      sunflowers.sort((a, b) => a.scale - b.scale);
+    }
+
+    let clouds = [];
+    function initClouds() {
+      clouds = [
+        { x: 100, y: 80, scale: 1.2, speed: 0.03 },
+        { x: 400, y: 100, scale: 1,   speed: 0.03 },
+        { x: 750, y: 60, scale: 1.5, speed: 0.03 },
+        { x: 1200, y: 90, scale: 1.2, speed: 0.03 }
+      ];
+    }
+
+    // Una abeja para dar dinamismo.
+    let bee = { phase: Math.random() * 2 * Math.PI, speed: 0.001, orbitRadius: 250 };
+
+    /* ============================ */
+    /* Bucle de Animación           */
+    /* ============================ */
+    let startTime = Date.now();
+
+    function updateAndDraw() {
+      const elapsed = Date.now() - startTime;
+
+      // Actualizar posición de las nubes (movimiento horizontal)
+      for (let cloud of clouds) {
+        cloud.x += cloud.speed;
+        if (cloud.x > canvas.width + 50) {
+          cloud.x = -50;
+        }
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBackground();
+
+      // Dibujar nubes
+      for (let cloud of clouds) {
+        drawCloud(cloud.x, cloud.y, cloud.scale);
+      }
+
+      // Dibujar cada girasol con mayor animación en la cabeza:
+      for (let s of sunflowers) {
+        // Oscilación compuesta: una oscilación base más una rápida de baja amplitud.
+        const baseSway = s.amplitude * Math.sin(elapsed * s.speed + s.phase);
+        const extraSway = 0.02 * Math.sin(elapsed * 0.007 + s.phase);
+        const swayAngle = baseSway + extraSway;
+        // Desplazamiento horizontal adicional para simular un movimiento más natural.
+        const headOffsetX = 3 * Math.sin(elapsed * 0.005 + s.phase + 1);
+        drawSunflower(s.x, s.y, s.scale, swayAngle, headOffsetX);
+      }
+
+      // Animar la abeja: órbita alrededor del centro del campo
+      const beeWingAngle = 0.4 * Math.sin(elapsed * 0.005);
+      const beeOrbitAngle = elapsed * 0.001 + bee.phase;
+      const beeX = canvas.width / 2 + bee.orbitRadius * Math.cos(beeOrbitAngle);
+      const beeY = canvas.height * 0.75 + bee.orbitRadius * Math.sin(beeOrbitAngle);
+      drawBee(beeX, beeY, beeWingAngle);
+
+      requestAnimationFrame(updateAndDraw);
+    }
+
+    /* ============================ */
+    /* Inicialización y Resize      */
+    /* ============================ */
+    function init() {
+      initSunflowers();
+      initClouds();
+      updateAndDraw();
+    }
+    init();
+
+    window.addEventListener("resize", () => {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+      init();
+    });
+  </script>
+</body>
+</html>
